@@ -51,7 +51,7 @@ mandatory three-direction gate cost 4-5 of the 7.4 minutes and is unsatisfiable 
 **less-ui** - row 3. Its own banned combination: `--surface:#F7F6F3` with `--accent:#B4531A`, which
 is the cream-plus-terracotta tell the skill's own section 2 names first. Everything else on that
 list held: no uppercase, no arrows, no emoji, no gradient text. Strongest wiring of the four - all
-seven SKU buttons carry distinct real the assessment part numbers and the drawer content matches.
+seven SKU buttons carry distinct real part numbers and the drawer content matches.
 
 ## What to fix in less-ui before run 2
 
@@ -125,7 +125,7 @@ references a token, and the self-check is one pass with a grep for literals inst
   drawer's trend follows the same window. The headline stays on 昨日营收, which is the correct
   semantics for a yesterday figure.
 - Channel filter to Shopee: headline recomputes from $631,500 to $138,100, table drops from 9 rows to 6.
-- Row click opens a drawer whose SKU matches the row (A1652, the assessment 737 Power Bank).
+- Row click opens a drawer whose SKU matches the row (A1652, 737 Power Bank).
 - Empty state cascades with its own copy and a "清除全部筛选" action. Loading state renders 70
   structural skeleton blocks. Demo controls sit in a labeled strip above the business filters.
 - Chart spike on 09-12 carries an annotation naming the cause (site subsidy, ad budget +42%).
