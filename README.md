@@ -91,6 +91,7 @@ token block it committed to.
 skills/less-ui/SKILL.md      the skill
 templates/CLAUDE.md          same rules as a CLAUDE.md drop-in
 templates/CLAUDE.min.md      the 400-word version you can type by hand in about ten minutes
+templates/CLAUDE.min.zh.md   the same, in Chinese, about 480 characters
 benchmark/briefs/            two assessment-style briefs and the rubric
 benchmark/SCORECARD.md       every run, every deduction, every lesson
 benchmark/history/           v1 to v4 of the skill, for the diff
