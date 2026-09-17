@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>晨检作战台 · 跨境运营</title>
+<style>
+:root{
+  --surface:#10151A;
+  --panel:#171E25;
+  --panel-2:#1D262F;
+  --ink:#E7EDF3;
+  --muted:#93A2B2;
+  --line:#28323C;
+  --accent:#4C86E8;
+  --ok:#4FA07A;
+  --warn:#D9A23F;
+  --alert:#DE6152;
+  --t-display:48px;
+  --t-heading:22px;
+  --t-body:14px;
+  --t-meta:12px;
+  --r-1:3px;
+  --r-2:8px;
+  --r-3:14px;
+  --s-1:8px;
+  --s-2:16px;
+  --s-3:32px;
+  --s-half:4px;
+  --shadow-rest:0 1px 0 rgba(0,0,0,.45);
+  --shadow-lift:0 18px 48px rgba(0,0,0,.6);
+  --font-ui:"IBM Plex Sans","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  --font-num:"IBM Plex Mono","SF Mono","PingFang SC",monospace;
+  color-scheme:dark;
+}
+
+/* sticky/overlay stacking order, explicit:
+   table thead 10 < topbar 30 < rail 40 < scrim 50 < drawer 60 */
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--surface);
+  color:var(--ink);
+  font-family:var(--font-ui);
+  font-size:var(--t-body);
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+::selection{background:rgba(76,134,232,.35);color:var(--ink)}
+input,select,textarea{caret-color:var(--accent)}
+*{scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:var(--line);border-radius:var(--r-3)}
+::-webkit-scrollbar-track{background:transparent}
+
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:var(--r-1)}
+
+.num{font-family:var(--font-num);font-variant-numeric:tabular-nums;letter-spacing:-0.01em}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ---------- shell ---------- */
+.app{display:grid;grid-template-columns:64px 1fr;min-height:100dvh}
+
+.rail{
+  position:sticky;top:0;z-index:40;
+  height:100dvh;
+  background:var(--panel);
+  border-right:1px solid var(--line);
+  display:flex;flex-direction:column;align-items:center;
+  gap:var(--s-1);
+  padding:var(--s-2) 0;
+}
+.rail .mark{
+  width:32px;height:32px;border-radius:var(--r-1);
+  background:var(--accent);color:#0B1016;
+  display:grid;place-items:center;
+  font-family:var(--font-num);font-size:var(--t-meta);font-weight:700;
+  margin-bottom:var(--s-2);
+}
+.rail button{
+  width:40px;height:40px;
+  display:grid;place-items:center;
+  background:transparent;border:1px solid transparent;border-radius:var(--r-2);
+  color:var(--muted);cursor:pointer;padding:0;
+}
+.rail button:hover{color:var(--ink);background:var(--panel-2)}
+.rail button[aria-current="page"]{color:var(--accent);background:var(--panel-2);border-color:var(--line)}
+
+.main{min-width:0;display:flex;flex-direction:column}
+
+/* ---------- topbar ---------- */
+.topbar{
+  position:sticky;top:0;z-index:30;
+  background:var(--surface);
+  border-bottom:1px solid var(--line);
+  padding:var(--s-2) var(--s-3);
+  display:flex;align-items:flex-end;justify-content:space-between;
+  gap:var(--s-2);flex-wrap:wrap;
+}
+.topbar h1{margin:0;font-size:var(--t-heading);font-weight:600;letter-spacing:-0.01em}
+.stamp{color:var(--muted);font-size:var(--t-meta);margin-top:var(--s-half)}
+.filters{display:flex;align-items:flex-end;gap:var(--s-2);flex-wrap:wrap}
+.field{display:flex;flex-direction:column;gap:var(--s-half)}
+.field label{font-size:var(--t-meta);color:var(--muted)}
+select,input[type="search"]{
+  background:var(--panel);color:var(--ink);
+  border:1px solid var(--line);border-radius:var(--r-1);
+  font-family:var(--font-ui);font-size:var(--t-body);
+  padding:var(--s-1) var(--s-2);
+  min-height:36px;
+}
+input[type="search"]{width:210px}
+.btn{
+  font-family:var(--font-ui);font-size:var(--t-body);
+  background:var(--panel);color:var(--ink);
+  border:1px solid var(--line);border-radius:var(--r-1);
+  padding:var(--s-1) var(--s-2);min-height:36px;cursor:pointer;
+}
+.btn:hover{background:var(--panel-2)}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:#0B1016;font-weight:600}
+.btn-primary:hover{background:#3F76D4}
+.btn-ghost{background:transparent}
+.btn-danger{background:transparent;border-color:var(--alert);color:var(--alert)}
+
+/* ---------- demo strip ---------- */
+.demo{
+  margin:var(--s-2) var(--s-3) 0;
+  border:1px dashed var(--line);border-radius:var(--r-2);
+  padding:var(--s-1) var(--s-2);
+  display:flex;align-items:center;gap:var(--s-2);flex-wrap:wrap;
+  background:rgba(147,162,178,.04);
+}
+.demo .tag{
+  font-size:var(--t-meta);color:var(--muted);
+  border:1px solid var(--line);border-radius:var(--r-1);
+  padding:0 var(--s-half);
+}
+.demo .hint{font-size:var(--t-meta);color:var(--muted)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:var(--r-1);overflow:hidden}
+.seg button{
+  font-family:var(--font-ui);font-size:var(--t-meta);
+  background:transparent;color:var(--muted);border:0;
+  padding:var(--s-half) var(--s-1);min-height:28px;cursor:pointer;
+}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:#0B1016;font-weight:600}
+
+/* ---------- layout ---------- */
+.grid{
+  padding:var(--s-2) var(--s-3) var(--s-3);
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 336px;
+  gap:var(--s-2);
+  align-items:start;
+}
+.col{min-width:0;display:flex;flex-direction:column;gap:var(--s-2)}
+
+.panel{
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:var(--r-2);
+  box-shadow:var(--shadow-rest);
+}
+.panel-head{
+  display:flex;align-items:baseline;justify-content:space-between;gap:var(--s-2);
+  padding:var(--s-2);
+  border-bottom:1px solid var(--line);
+  flex-wrap:wrap;
+}
+.panel-head h2{margin:0;font-size:var(--t-body);font-weight:600}
+.panel-head .sub{font-size:var(--t-meta);color:var(--muted)}
+
+/* ---------- focus block ---------- */
+.focus{display:grid;grid-template-columns:288px minmax(0,1fr);gap:0}
+.focus .lead{padding:var(--s-2);border-right:1px solid var(--line)}
+.lead .k{font-size:var(--t-meta);color:var(--muted)}
+.lead .v{
+  font-family:var(--font-num);font-variant-numeric:tabular-nums;
+  font-size:var(--t-display);line-height:1.05;font-weight:600;
+  margin:var(--s-1) 0;letter-spacing:-0.03em;
+}
+.lead .cmp{font-size:var(--t-meta);color:var(--muted)}
+.delta{font-family:var(--font-num);font-variant-numeric:tabular-nums;font-weight:600}
+.up{color:var(--ok)} .down{color:var(--alert)} .flat{color:var(--muted)}
+.kpis{
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+  border-top:1px solid var(--line);
+}
+.kpi{padding:var(--s-2);border-right:1px solid var(--line);min-width:0}
+.kpi:last-child{border-right:0}
+.kpi .k{font-size:var(--t-meta);color:var(--muted)}
+.kpi .v{font-family:var(--font-num);font-variant-numeric:tabular-nums;font-size:var(--t-heading);margin-top:var(--s-half)}
+.kpi .d{font-size:var(--t-meta);margin-top:var(--s-half)}
+.chartwrap{padding:var(--s-2);min-width:0}
+.chartbar{display:flex;align-items:center;justify-content:space-between;gap:var(--s-2);margin-bottom:var(--s-1);flex-wrap:wrap}
+.chartbar .cap{font-size:var(--t-meta);color:var(--muted)}
+.chart svg{display:block;width:100%;height:auto}
+
+/* ---------- table ---------- */
+.tablewrap{max-height:520px;overflow-y:auto;overflow-x:hidden}
+table{width:100%;border-collapse:collapse;table-layout:fixed}
+thead th{
+  position:sticky;top:0;z-index:10;
+  background:var(--panel-2);
+  border-bottom:1px solid var(--line);
+  font-size:var(--t-meta);font-weight:500;color:var(--muted);
+  text-align:left;padding:0;
+}
+thead th button{
+  width:100%;display:flex;align-items:center;gap:var(--s-half);
+  background:transparent;border:0;color:inherit;
+  font-family:var(--font-ui);font-size:var(--t-meta);
+  padding:var(--s-1) var(--s-2);min-height:36px;cursor:pointer;text-align:left;
+}
+thead th button:hover{color:var(--ink)}
+thead th.r button{justify-content:flex-end}
+thead th[aria-sort] button{color:var(--accent)}
+.caret{width:8px;height:8px;flex:none}
+tbody tr{border-bottom:1px solid var(--line);height:52px;cursor:pointer}
+tbody tr:hover{background:var(--panel-2)}
+tbody tr:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+td{padding:var(--s-1) var(--s-2);font-size:var(--t-body);vertical-align:middle}
+td.r{text-align:right;font-family:var(--font-num);font-variant-numeric:tabular-nums}
+.name{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.name .meta{color:var(--muted);font-size:var(--t-meta);margin-left:var(--s-1)}
+.status{display:inline-flex;align-items:center;gap:var(--s-half);font-size:var(--t-meta);white-space:nowrap}
+.dot{width:8px;height:8px;border-radius:var(--r-3);flex:none}
+.dot.ok{background:var(--ok)} .dot.warn{background:var(--warn)} .dot.alert{background:var(--alert)}
+.status.ok{color:var(--ok)} .status.warn{color:var(--warn)} .status.alert{color:var(--alert)}
+
+/* ---------- alerts ---------- */
+.alerts{display:flex;flex-direction:column}
+.alert-item{
+  display:block;width:100%;text-align:left;
+  background:transparent;border:0;border-bottom:1px solid var(--line);
+  border-left:3px solid var(--line);
+  padding:var(--s-2);cursor:pointer;color:inherit;font-family:var(--font-ui);
+}
+.alert-item:hover{background:var(--panel-2)}
+.alert-item.sev-high{border-left-color:var(--alert)}
+.alert-item.sev-mid{border-left-color:var(--warn)}
+.alert-item .t{font-size:var(--t-body);font-weight:600}
+.alert-item .w{font-size:var(--t-meta);color:var(--muted);margin-top:var(--s-half)}
+.alert-item .m{
+  font-size:var(--t-meta);color:var(--muted);margin-top:var(--s-1);
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+}
+.sev{font-size:var(--t-meta);font-family:var(--font-num);padding:0 var(--s-half);border-radius:var(--r-1);border:1px solid currentColor}
+.sev-high .sev{color:var(--alert)} .sev-mid .sev{color:var(--warn)}
+
+/* ---------- states ---------- */
+.skel{background:var(--line);border-radius:var(--r-1);animation:pulse 1.4s ease-out infinite}
+@keyframes pulse{0%,100%{opacity:.5}50%{opacity:.9}}
+.skel-row{display:flex;align-items:center;gap:var(--s-2);padding:var(--s-2);border-bottom:1px solid var(--line)}
+.state{padding:var(--s-3) var(--s-2);text-align:center}
+.state .h{font-size:var(--t-body);font-weight:600}
+.state .p{font-size:var(--t-meta);color:var(--muted);margin:var(--s-1) auto var(--s-2);max-width:42ch}
+.state.err{text-align:left;border-left:3px solid var(--alert);padding:var(--s-2)}
+.state.err .h{color:var(--alert)}
+
+/* ---------- drawer ---------- */
+.scrim{
+  position:fixed;inset:0;z-index:50;background:rgba(8,11,15,.6);
+  opacity:0;pointer-events:none;transition:opacity 180ms ease-out;
+}
+.scrim.on{opacity:1;pointer-events:auto}
+.drawer{
+  position:fixed;top:0;right:0;z-index:60;
+  width:min(540px,92vw);height:100dvh;
+  background:var(--panel);border-left:1px solid var(--line);
+  box-shadow:var(--shadow-lift);
+  transform:translateX(100%);transition:transform 180ms ease-out;
+  display:flex;flex-direction:column;
+}
+.drawer.on{transform:translateX(0)}
+.drawer-head{
+  display:flex;align-items:flex-start;justify-content:space-between;gap:var(--s-2);
+  padding:var(--s-2);border-bottom:1px solid var(--line);
+}
+.drawer-head h2{margin:0;font-size:var(--t-heading);font-weight:600;letter-spacing:-0.01em}
+.drawer-head .sub{font-size:var(--t-meta);color:var(--muted);margin-top:var(--s-half)}
+.drawer-body{overflow-y:auto;padding:var(--s-2);display:flex;flex-direction:column;gap:var(--s-3)}
+.drawer-foot{
+  padding:var(--s-2);border-top:1px solid var(--line);
+  display:flex;gap:var(--s-1);justify-content:flex-end;flex-wrap:wrap;
+}
+.block h3{margin:0 0 var(--s-1);font-size:var(--t-meta);color:var(--muted);font-weight:500}
+.block p{margin:0;max-width:70ch}
+.kv{display:grid;grid-template-columns:104px minmax(0,1fr);gap:var(--s-1) var(--s-2);font-size:var(--t-body)}
+.kv dt{color:var(--muted);font-size:var(--t-meta)}
+.kv dd{margin:0}
+.bars{display:flex;flex-direction:column;gap:var(--s-1)}
+.bar-row{display:grid;grid-template-columns:96px minmax(0,1fr) 92px;gap:var(--s-2);align-items:center;font-size:var(--t-body)}
+.bar-track{height:8px;background:var(--panel-2);border-radius:var(--r-1);overflow:hidden}
+.bar-fill{height:8px;background:var(--accent);border-radius:var(--r-1)}
+.bar-fill.warn{background:var(--warn)} .bar-fill.alert{background:var(--alert)}
+.bar-row .val{text-align:right;font-family:var(--font-num);font-variant-numeric:tabular-nums;font-size:var(--t-meta);color:var(--muted)}
+.rec{border:1px solid var(--line);border-radius:var(--r-2);padding:var(--s-2);background:var(--panel-2)}
+.rec ol{margin:var(--s-1) 0 0;padding-left:var(--s-2);display:flex;flex-direction:column;gap:var(--s-half)}
+.toast{
+  position:fixed;left:50%;bottom:var(--s-3);z-index:60;
+  transform:translate(-50%,var(--s-2));opacity:0;pointer-events:none;
+  background:var(--panel-2);border:1px solid var(--line);border-radius:var(--r-2);
+  padding:var(--s-1) var(--s-2);font-size:var(--t-body);box-shadow:var(--shadow-lift);
+  transition:opacity 180ms ease-out,transform 180ms ease-out;
+}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+
+@media (prefers-reduced-motion:reduce){
+  *{transition:none!important;animation:none!important}
+}
+@media (max-width:1180px){
+  .grid{grid-template-columns:minmax(0,1fr)}
+  .focus{grid-template-columns:minmax(0,1fr)}
+  .focus .lead{border-right:0;border-bottom:1px solid var(--line)}
+}
+@media (max-width:760px){
+  :root{--t-display:36px;--t-heading:20px;--t-body:16px;--t-meta:13px;--s-3:20px}
+  .app{grid-template-columns:1fr}
+  .rail{position:static;height:auto;flex-direction:row;border-right:0;border-bottom:1px solid var(--line)}
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <nav class="rail" aria-label="主导航">
+    <div class="mark" aria-hidden="true">AK</div>
+    <button type="button" aria-label="晨检总览" aria-current="page">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2.5" y="2.5" width="6" height="6" rx="1"/><rect x="11.5" y="2.5" width="6" height="6" rx="1"/><rect x="2.5" y="11.5" width="6" height="6" rx="1"/><rect x="11.5" y="11.5" width="6" height="6" rx="1"/></svg>
+    </button>
+    <button type="button" aria-label="渠道明细">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2.5 5h15M2.5 10h15M2.5 15h15"/></svg>
+    </button>
+    <button type="button" aria-label="库存与补货">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 2.5 17 6v8l-7 3.5L3 14V6z"/><path d="M3 6l7 3.5L17 6M10 9.5v8"/></svg>
+    </button>
+    <button type="button" aria-label="预警中心">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 8a5 5 0 0 1 10 0c0 4 1.5 5.5 1.5 5.5h-13S5 12 5 8z"/><path d="M8.5 16.5h3"/></svg>
+    </button>
+    <button type="button" aria-label="设置">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="10" r="2.6"/><path d="M10 2.5v2M10 15.5v2M17.5 10h-2M4.5 10h-2M15.3 4.7l-1.4 1.4M6.1 13.9l-1.4 1.4M15.3 15.3l-1.4-1.4M6.1 6.1 4.7 4.7"/></svg>
+    </button>
+  </nav>
+
+  <div class="main">
+    <header class="topbar">
+      <div>
+        <h1>晨检作战台</h1>
+        <div class="stamp num" id="stamp">数据截至 2026-09-15 23:59 (UTC+8) · 3 分钟前同步</div>
+      </div>
+      <div class="filters">
+        <div class="field">
+          <label for="f-channel">渠道</label>
+          <select id="f-channel"><option value="all">全部渠道</option><option value="Amazon">Amazon</option><option value="Shopee">Shopee</option></select>
+        </div>
+        <div class="field">
+          <label for="f-market">站点</label>
+          <select id="f-market">
+            <option value="all">全部站点</option>
+            <option value="US">美国 US</option><option value="DE">德国 DE</option><option value="JP">日本 JP</option>
+            <option value="SG">新加坡 SG</option><option value="MY">马来 MY</option><option value="TH">泰国 TH</option>
+            <option value="PH">菲律宾 PH</option><option value="VN">越南 VN</option><option value="ID">印尼 ID</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="f-cmp">对比口径</label>
+          <select id="f-cmp"><option value="w">环比上周</option><option value="m">环比上月</option></select>
+        </div>
+        <div class="field">
+          <label for="f-q">搜索站点或 SKU</label>
+          <input id="f-q" type="search" inputmode="search" placeholder="如 JP、A2662、737">
+        </div>
+        <button class="btn" type="button" id="btn-refresh">重新同步</button>
+      </div>
+    </header>
+
+    <div class="demo" role="group" aria-label="演示控制">
+      <span class="tag">演示</span>
+      <span class="hint">切换数据状态用于演示，不影响真实业务筛选：</span>
+      <div class="seg" id="seg-state">
+        <button type="button" data-state="ready" aria-pressed="true">正常数据</button>
+        <button type="button" data-state="loading" aria-pressed="false">加载中</button>
+        <button type="button" data-state="empty" aria-pressed="false">空数据</button>
+        <button type="button" data-state="error" aria-pressed="false">接口错误</button>
+      </div>
+      <span class="hint" id="demo-note">当前：正常数据</span>
+    </div>
+
+    <div class="grid">
+      <div class="col">
+        <!-- overview -->
+        <section class="panel" aria-labelledby="ov-h">
+          <div class="panel-head">
+            <h2 id="ov-h">昨日经营总览</h2>
+            <span class="sub" id="ov-scope">全部渠道 · 全部站点 · 9 个站点在统计中</span>
+          </div>
+          <div id="ov-body">
+            <div class="focus">
+              <div class="lead">
+                <div class="k">昨日营收（折美元）</div>
+                <div class="v" id="lead-v">$0</div>
+                <div class="cmp"><span class="delta" id="lead-d">—</span> <span id="lead-cmp">环比上周</span> · 上周同口径 <span class="num" id="lead-prev">—</span></div>
+              </div>
+              <div class="chartwrap">
+                <div class="chartbar">
+                  <span class="cap" id="chart-cap">近 7 天 · 每日营收（美元）</span>
+                  <div style="display:flex;gap:var(--s-1)">
+                    <div class="seg" id="seg-metric" role="group" aria-label="趋势指标">
+                      <button type="button" data-metric="rev" aria-pressed="true">营收</button>
+                      <button type="button" data-metric="ord" aria-pressed="false">订单</button>
+                      <button type="button" data-metric="ad" aria-pressed="false">广告花费</button>
+                      <button type="button" data-metric="roas" aria-pressed="false">ROAS</button>
+                    </div>
+                    <div class="seg" id="seg-win" role="group" aria-label="时间窗">
+                      <button type="button" data-win="7" aria-pressed="true">7 天</button>
+                      <button type="button" data-win="14" aria-pressed="false">14 天</button>
+                    </div>
+                  </div>
+                </div>
+                <div class="chart" id="chart"></div>
+              </div>
+            </div>
+            <div class="kpis" id="kpis"></div>
+          </div>
+        </section>
+
+        <!-- table -->
+        <section class="panel" aria-labelledby="tb-h">
+          <div class="panel-head">
+            <h2 id="tb-h">渠道 × 站点</h2>
+            <span class="sub" id="tb-sub">点击任意行查看该站点重点 SKU 的下钻详情</span>
+          </div>
+          <div id="tb-body"></div>
+        </section>
+      </div>
+
+      <!-- alerts -->
+      <aside class="panel" aria-labelledby="al-h">
+        <div class="panel-head">
+          <h2 id="al-h">今日预警</h2>
+          <span class="sub" id="al-sub">按影响金额排序</span>
+        </div>
+        <div class="alerts" id="al-body"></div>
+      </aside>
+    </div>
+  </div>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" role="dialog" aria-modal="false" aria-labelledby="dw-title" aria-hidden="true">
+  <div class="drawer-head">
+    <div style="min-width:0">
+      <h2 id="dw-title">—</h2>
+      <div class="sub" id="dw-sub">—</div>
+    </div>
+    <button class="btn btn-ghost" type="button" id="dw-close" aria-label="关闭详情">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+    </button>
+  </div>
+  <div class="drawer-body" id="dw-body"></div>
+  <div class="drawer-foot" id="dw-foot"></div>
+</aside>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------------- data ---------------- */
+var DAYS=["09-02","09-03","09-04","09-05","09-06","09-07","09-08","09-09","09-10","09-11","09-12","09-13","09-14","09-15"];
+var REV_D=[85800,88300,89800,85000,82400,91100,90900,86900,89400,92600,95800,88700,87400,90700];
+var AD_D=[14500,14800,15800,14400,15200,14600,14500,15200,16100,19800,18400,16300,15700,16500];
+var AOV=50.6;
+var ANNOT={day:"09-12",text:"09-12 站点秒杀档期，广告预算临时上调 40%"};
+
+var SKUS={
+  "A2662":{code:"A2662",name:"733 GaNPrime 65W 三口氮化镓充电器（黑）",price:59.99,
+    units:[412,398,441,455,467,430,421,448,462,489,512,476,455,468],
+    wh:[{n:"美西 FBA",q:3240,d:18},{n:"美东 FBA",q:1180,d:7},{n:"日本 FBA",q:420,d:9},{n:"深圳中心仓",q:8600,d:0}],
+    reviews:[{t:"插头偏松",c:38,p:34},{t:"发热明显",c:26,p:23},{t:"包装破损",c:18,p:16},{t:"与描述不符",c:16,p:14},{t:"充电速度不达标",c:14,p:13}],
+    rating:4.4},
+  "A1652":{code:"A1652",name:"737 Power Bank (PowerCore 24K) 140W 快充移动电源",price:139.99,
+    units:[186,192,178,201,214,199,188,176,169,158,151,147,142,138],
+    wh:[{n:"德国 FBA",q:960,d:12},{n:"美西 FBA",q:2140,d:21},{n:"波兰第三方仓",q:640,d:14},{n:"深圳中心仓",q:5300,d:0}],
+    reviews:[{t:"充电变慢",c:41,p:32},{t:"固件升级失败",c:31,p:24},{t:"重量偏大",c:19,p:15},{t:"屏幕熄灭偏快",c:14,p:11},{t:"线材易断",c:10,p:8}],
+    rating:4.2},
+  "A3116":{code:"A3116",name:"Soundcore Space One 头戴式降噪耳机",price:99.99,
+    units:[244,251,239,262,270,258,249,266,274,288,296,271,263,259],
+    wh:[{n:"新加坡海外仓",q:1860,d:24},{n:"马来海外仓",q:1240,d:31},{n:"菲律宾海外仓",q:2380,d:41},{n:"深圳中心仓",q:7100,d:0}],
+    reviews:[{t:"降噪不如宣传",c:29,p:30},{t:"耳罩闷热",c:22,p:23},{t:"连接不稳定",c:18,p:19},{t:"续航虚标",c:15,p:15},{t:"物流慢",c:12,p:13}],
+    rating:4.3}
+};
+
+/* 每行携带上周 / 上月同口径增速，KPI 与环比全部由这份数据推导 */
+var ROWS=[
+  {ch:"Amazon",mk:"US",mkn:"美国",rev:286400,ord:4120,ad:41300,days:18,pdW:21,pdM:24,gw:5.8,ow:4.9,aw:21.0,gm:11.2,om:9.4,am:16.8,sku:"A2662",st:"ok"},
+  {ch:"Amazon",mk:"DE",mkn:"德国",rev:112800,ord:1680,ad:22400,days:12,pdW:15,pdM:17,gw:2.1,ow:1.2,aw:9.4,gm:6.4,om:5.1,am:12.2,sku:"A1652",st:"warn"},
+  {ch:"Amazon",mk:"JP",mkn:"日本",rev:94200,ord:1540,ad:19800,days:9,pdW:16,pdM:19,gw:-3.4,ow:-2.8,aw:6.2,gm:2.8,om:1.9,am:10.4,sku:"A2662",st:"alert"},
+  {ch:"Shopee",mk:"SG",mkn:"新加坡",rev:38600,ord:1210,ad:7900,days:24,pdW:26,pdM:28,gw:7.2,ow:6.1,aw:12.8,gm:14.6,om:12.8,am:19.5,sku:"A3116",st:"ok"},
+  {ch:"Shopee",mk:"MY",mkn:"马来",rev:27400,ord:980,ad:6800,days:31,pdW:29,pdM:33,gw:-1.8,ow:-0.9,aw:4.5,gm:3.1,om:2.2,am:8.8,sku:"A3116",st:"warn"},
+  {ch:"Shopee",mk:"TH",mkn:"泰国",rev:22900,ord:870,ad:5600,days:16,pdW:18,pdM:21,gw:9.4,ow:8.2,aw:15.1,gm:15.9,om:14.1,am:21.3,sku:"A2662",st:"ok"},
+  {ch:"Shopee",mk:"PH",mkn:"菲律宾",rev:18300,ord:760,ad:5900,days:41,pdW:38,pdM:44,gw:-6.5,ow:-5.4,aw:34.2,gm:-2.4,om:-1.6,am:41.0,sku:"A3116",st:"alert"},
+  {ch:"Shopee",mk:"VN",mkn:"越南",rev:14700,ord:620,ad:3900,days:27,pdW:28,pdM:30,gw:3.3,ow:2.6,aw:7.9,gm:8.7,om:7.5,am:13.6,sku:"A1652",st:"ok"},
+  {ch:"Shopee",mk:"ID",mkn:"印尼",rev:16200,ord:710,ad:4400,days:22,pdW:24,pdM:25,gw:1.4,ow:0.7,aw:5.8,gm:5.2,om:4.4,am:11.1,sku:"A3116",st:"ok"}
+];
+
+var ALERTS=[
+  {id:"al-1",sev:"high",type:"断货风险",title:"Amazon JP · A2662 可售 9 天",
+   where:"Amazon 日本站",impact:"预计影响 GMV $38,600 / 14 天",sku:"A2662",mk:"JP",
+   diag:"日本站 A2662 昨日售出 468 件，按近 7 日均速仅够卖 9 天，低于 14 天安全线。补货批次 PO-20916 仍在海运途中，ETA 10-02，中间存在 8 天缺口。",
+   acts:["从美东 FBA 调拨 1,200 件走空运，预计 09-21 可售","暂停该 SKU 的自动降价规则，避免加速消耗","把日本站广告日预算从 $2,400 下调至 $1,500"],
+   cta:"创建调拨单", done:"调拨单已创建"},
+  {id:"al-2",sev:"mid",type:"评分下滑",title:"Amazon DE · A1652 评分 4.6 → 4.2",
+   where:"Amazon 德国站",impact:"7 日内新增 41 条一/二星评价",sku:"A1652",mk:"DE",
+   diag:"A1652 德国站评分 7 日内从 4.6 降至 4.2，差评主题集中在「充电变慢」与「固件升级失败」，均指向 2.0 版固件。该 SKU 日销已连续 6 天下滑。",
+   acts:["暂停德国站该 SKU 的广告加投，先止血再放量","推送固件 2.1 更新说明并在 A+ 页面置顶","对近 30 天购买用户发起主动关怀邮件"],
+   cta:"暂停广告加投", done:"德国站广告加投已暂停"},
+  {id:"al-3",sev:"mid",type:"广告成本飙升",title:"Shopee PH · 广告花费环比 +34.2%",
+   where:"Shopee 菲律宾站 · 组合广告「Soundcore 秋促」",impact:"ACoS 32.2%，较上周 +11.4pt",sku:"A3116",mk:"PH",
+   diag:"菲律宾站昨日广告花费 $5,900，环比上周 +34.2%，但营收环比 -6.5%，ROAS 已跌至 3.1。花费集中在 3 个宽泛匹配关键词，转化率低于 0.6%。",
+   acts:["日预算从 $860 降至 $600","关停 3 个高花费低转化关键词（headphone、bluetooth earphone、wireless headset）","把预算迁移到 ROAS 5.0 以上的泰国站"],
+   cta:"下调日预算", done:"日预算已下调至 $600"}
+];
+
+/* ---------------- state ---------------- */
+var S={demo:"ready",ch:"all",mk:"all",cmp:"w",q:"",metric:"rev",win:7,sortKey:"rev",sortDir:"desc"};
+var lastFocus=null;
+
+/* ---------------- helpers ---------------- */
+var $=function(s){return document.querySelector(s)};
+function money(n){return "$"+Math.round(n).toLocaleString("en-US")}
+function moneyK(n){return "$"+Math.round(n/1000)+"k"}
+function int(n){return Math.round(n).toLocaleString("en-US")}
+function pct(n,d){var s=(n>=0?"+":"−")+Math.abs(n).toFixed(d===undefined?1:d)+"%";return s}
+function cls(n){return n>0.05?"up":(n<-0.05?"down":"flat")}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+
+function filtered(){
+  var q=S.q.trim().toLowerCase();
+  return ROWS.filter(function(r){
+    if(S.ch!=="all"&&r.ch!==S.ch)return false;
+    if(S.mk!=="all"&&r.mk!==S.mk)return false;
+    if(q){
+      var hay=(r.ch+" "+r.mk+" "+r.mkn+" "+r.sku+" "+SKUS[r.sku].name).toLowerCase();
+      if(hay.indexOf(q)<0)return false;
+    }
+    return true;
+  });
+}
+function prevOf(r,k){
+  var g=S.cmp==="w"?{rev:r.gw,ord:r.ow,ad:r.aw}:{rev:r.gm,ord:r.om,ad:r.am};
+  return {rev:r.rev/(1+g.rev/100),ord:r.ord/(1+g.ord/100),ad:r.ad/(1+g.ad/100),days:S.cmp==="w"?r.pdW:r.pdM}[k];
+}
+function agg(rows){
+  var a={rev:0,ord:0,ad:0,prev:{rev:0,ord:0,ad:0},dw:0,pdw:0};
+  rows.forEach(function(r){
+    a.rev+=r.rev;a.ord+=r.ord;a.ad+=r.ad;
+    a.prev.rev+=prevOf(r,"rev");a.prev.ord+=prevOf(r,"ord");a.prev.ad+=prevOf(r,"ad");
+    a.dw+=r.days*r.rev;a.pdw+=prevOf(r,"days")*prevOf(r,"rev");
+  });
+  a.roas=a.ad?a.rev/a.ad:0;
+  a.prev.roas=a.prev.ad?a.prev.rev/a.prev.ad:0;
+  a.days=a.rev?a.dw/a.rev:0;
+  a.prev.days=a.prev.rev?a.pdw/a.prev.rev:0;
+  return a;
+}
+function share(rows){
+  var t=ROWS.reduce(function(s,r){return s+r.rev},0);
+  var f=rows.reduce(function(s,r){return s+r.rev},0);
+  return t?f/t:0;
+}
+
+/* ---------------- chart ---------------- */
+function seriesFor(metric){
+  var out=[],i;
+  for(i=0;i<DAYS.length;i++){
+    if(metric==="rev")out.push(REV_D[i]);
+    else if(metric==="ad")out.push(AD_D[i]);
+    else if(metric==="ord")out.push(Math.round(REV_D[i]/AOV));
+    else out.push(REV_D[i]/AD_D[i]);
+  }
+  var f=share(filtered());
+  if(metric!=="roas"&&f<0.999)out=out.map(function(v){return v*f});
+  return out;
+}
+function fmtMetric(v,m){
+  if(m==="rev"||m==="ad")return money(v);
+  if(m==="ord")return int(v)+" 单";
+  return v.toFixed(2);
+}
+function drawChart(){
+  var m=S.metric,win=S.win;
+  var full=seriesFor(m),labels=DAYS;
+  var vals=full.slice(full.length-win),labs=labels.slice(labels.length-win);
+  var W=760,H=196,L=56,R=10,T=26,B=26;
+  var max=Math.max.apply(null,vals),min=Math.min.apply(null,vals);
+  var pad=(max-min)*0.35||max*0.1;
+  var hi=max+pad,lo=Math.max(0,min-pad);
+  var x=function(i){return L+(W-L-R)*(win===1?0:i/(win-1))};
+  var y=function(v){return T+(H-T-B)*(1-(v-lo)/((hi-lo)||1))};
+  var pts=vals.map(function(v,i){return x(i)+","+y(v)}).join(" ");
+  var area="M"+x(0)+","+y(vals[0])+" L"+vals.map(function(v,i){return x(i)+","+y(v)}).join(" L")+" L"+x(win-1)+","+(H-B)+" L"+x(0)+","+(H-B)+" Z";
+  var grid="",i,gv;
+  for(i=0;i<3;i++){
+    gv=lo+(hi-lo)*i/2;
+    grid+='<line x1="'+L+'" y1="'+y(gv)+'" x2="'+(W-R)+'" y2="'+y(gv)+'" stroke="#28323C" stroke-width="1"/>'+
+          '<text x="'+(L-8)+'" y="'+(y(gv)+4)+'" text-anchor="end" fill="#93A2B2" style="font-size:var(--t-meta)" font-family="IBM Plex Mono, monospace">'+
+          (m==="roas"?gv.toFixed(1):(m==="ord"?int(gv):moneyK(gv)))+'</text>';
+  }
+  var xl="",step=win>7?2:1;
+  for(i=0;i<win;i++){ if(i%step===0||i===win-1){
+    xl+='<text x="'+x(i)+'" y="'+(H-8)+'" text-anchor="middle" fill="#93A2B2" style="font-size:var(--t-meta)" font-family="IBM Plex Mono, monospace">'+labs[i]+'</text>';
+  }}
+  var dots=vals.map(function(v,i){return '<circle cx="'+x(i)+'" cy="'+y(v)+'" r="2.5" fill="#10151A" stroke="#4C86E8" stroke-width="1.5"><title>'+labs[i]+" · "+fmtMetric(v,m)+'</title></circle>'}).join("");
+  var ai=labs.indexOf(ANNOT.day),note="";
+  if(ai>=0){
+    var ax=x(ai),anchor=ai>win/2?"end":"start",tx=ai>win/2?ax-6:ax+6;
+    note='<line x1="'+ax+'" y1="'+T+'" x2="'+ax+'" y2="'+(H-B)+'" stroke="#D9A23F" stroke-width="1" stroke-dasharray="3 3"/>'+
+         '<circle cx="'+ax+'" cy="'+y(vals[ai])+'" r="4" fill="#D9A23F"/>'+
+         '<text x="'+tx+'" y="'+(T-10)+'" text-anchor="'+anchor+'" fill="#D9A23F" style="font-size:var(--t-meta)">'+esc(ANNOT.text)+'</text>';
+  }
+  var title=(win===7?"近 7 天":"近 14 天")+" · "+({rev:"每日营收（美元）",ord:"每日订单量",ad:"每日广告花费（美元）",roas:"每日 ROAS"}[m])+
+            " · "+labs[0]+" 至 "+labs[win-1]+"（"+win+" 个数据点）";
+  $("#chart-cap").textContent=title;
+  $("#chart").innerHTML='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+esc(title)+'">'+
+    grid+'<path d="'+area+'" fill="rgba(76,134,232,.12)"/>'+
+    '<polyline points="'+pts+'" fill="none" stroke="#4C86E8" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>'+
+    dots+note+xl+'</svg>';
+}
+
+/* ---------------- render: overview ---------------- */
+function skelChart(){
+  return '<div style="padding:var(--s-2)"><div class="skel" style="height:44px;width:220px"></div>'+
+         '<div class="skel" style="height:140px;margin-top:var(--s-2)"></div></div>';
+}
+function errBox(what,region){
+  return '<div class="state err"><div class="h">'+esc(what)+'</div>'+
+    '<div class="p">数据服务 report-gateway 返回 502，'+esc(region)+'未能加载。其余区域数据仍为昨日快照。</div>'+
+    '<button class="btn" type="button" data-retry="1">重试加载</button></div>';
+}
+function renderOverview(){
+  var box=$("#ov-body");
+  if(S.demo==="loading"){box.innerHTML=skelChart()+'<div class="kpis">'+
+    [0,1,2,3].map(function(){return '<div class="kpi"><div class="skel" style="height:12px;width:64px"></div><div class="skel" style="height:22px;width:88px;margin-top:var(--s-1)"></div></div>'}).join("")+
+    '</div>';return;}
+  if(S.demo==="error"){box.innerHTML=errBox("总览指标加载失败","昨日经营总览");return;}
+
+  var rows=filtered();
+  $("#ov-scope").textContent=(S.ch==="all"?"全部渠道":S.ch)+" · "+(S.mk==="all"?"全部站点":S.mk)+" · "+rows.length+" 个站点在统计中";
+
+  if(S.demo==="empty"||rows.length===0){
+    box.innerHTML='<div class="state"><div class="h">当前筛选下没有可统计的站点</div>'+
+      '<div class="p">'+(S.demo==="empty"?"昨日该口径没有回传任何订单数据，通常出现在新站点上线首日。":"没有站点同时满足渠道、站点与搜索条件。")+'</div>'+
+      '<button class="btn btn-primary" type="button" data-clear="1">清除全部筛选</button></div>';
+    return;
+  }
+
+  var a=agg(rows);
+  var dRev=(a.rev/a.prev.rev-1)*100, dOrd=(a.ord/a.prev.ord-1)*100,
+      dAd=(a.ad/a.prev.ad-1)*100, dRoas=(a.roas/a.prev.roas-1)*100, dDays=a.days-a.prev.days;
+  var cmpLabel=S.cmp==="w"?"环比上周":"环比上月";
+  var prevLabel=S.cmp==="w"?"上周同口径":"上月同口径";
+
+  box.innerHTML=
+  '<div class="focus">'+
+    '<div class="lead">'+
+      '<div class="k">昨日营收（折美元）</div>'+
+      '<div class="v" id="lead-v">'+money(a.rev)+'</div>'+
+      '<div class="cmp"><span class="delta '+cls(dRev)+'">'+pct(dRev)+'</span> '+cmpLabel+' · '+prevLabel+' <span class="num">'+money(a.prev.rev)+'</span></div>'+
+    '</div>'+
+    '<div class="chartwrap">'+
+      '<div class="chartbar"><span class="cap" id="chart-cap"></span><div style="display:flex;gap:var(--s-1)">'+
+        '<div class="seg" id="seg-metric" role="group" aria-label="趋势指标">'+
+          ["rev","ord","ad","roas"].map(function(k){
+            var n={rev:"营收",ord:"订单",ad:"广告花费",roas:"ROAS"}[k];
+            return '<button type="button" data-metric="'+k+'" aria-pressed="'+(S.metric===k)+'">'+n+'</button>';}).join("")+
+        '</div>'+
+        '<div class="seg" id="seg-win" role="group" aria-label="时间窗">'+
+          [7,14].map(function(w){return '<button type="button" data-win="'+w+'" aria-pressed="'+(S.win===w)+'">'+w+' 天</button>'}).join("")+
+        '</div>'+
+      '</div></div>'+
+      '<div class="chart" id="chart"></div>'+
+    '</div>'+
+  '</div>'+
+  '<div class="kpis">'+
+    kpi("订单量",int(a.ord)+" 单",pct(dOrd),cls(dOrd),cmpLabel)+
+    kpi("广告花费",money(a.ad),pct(dAd),cls(-dAd),cmpLabel)+
+    kpi("ROAS",a.roas.toFixed(2),pct(dRoas),cls(dRoas),cmpLabel)+
+    kpi("库存可售天数",a.days.toFixed(1)+" 天",(dDays>=0?"+":"−")+Math.abs(dDays).toFixed(1)+" 天",cls(dDays),cmpLabel)+
+  '</div>';
+  drawChart();
+}
+function kpi(k,v,d,c,cmp){
+  return '<div class="kpi"><div class="k">'+k+'</div><div class="v">'+v+'</div>'+
+         '<div class="d"><span class="delta '+c+'">'+d+'</span> <span style="color:var(--muted)">'+cmp+'</span></div></div>';
+}
+
+/* ---------------- render: table ---------------- */
+var COLS=[
+  {k:"name",t:"渠道 · 站点",r:false,w:"26%"},
+  {k:"rev",t:"营收",r:true,w:"12%"},
+  {k:"ord",t:"订单",r:true,w:"9%"},
+  {k:"ad",t:"广告花费",r:true,w:"12%"},
+  {k:"roas",t:"ROAS",r:true,w:"9%"},
+  {k:"days",t:"可售天数",r:true,w:"11%"},
+  {k:"delta",t:"营收环比",r:true,w:"11%"},
+  {k:"st",t:"健康状态",r:false,w:"10%"}
+];
+var ST={ok:{t:"正常",c:"ok"},warn:{t:"关注",c:"warn"},alert:{t:"风险",c:"alert"}};
+
+function sortRows(rows){
+  var k=S.sortKey,dir=S.sortDir==="asc"?1:-1;
+  var val=function(r){
+    if(k==="name")return r.ch+" "+r.mk;
+    if(k==="roas")return r.rev/r.ad;
+    if(k==="delta")return S.cmp==="w"?r.gw:r.gm;
+    if(k==="st")return {alert:0,warn:1,ok:2}[r.st];
+    return r[k];
+  };
+  return rows.slice().sort(function(a,b){
+    var x=val(a),y=val(b);
+    if(typeof x==="string")return x.localeCompare(y)*dir;
+    return (x-y)*dir;
+  });
+}
+function renderTable(){
+  var box=$("#tb-body");
+  if(S.demo==="loading"){
+    var s="";for(var i=0;i<6;i++){
+      s+='<div class="skel-row"><div class="skel" style="height:14px;width:26%"></div><div class="skel" style="height:14px;width:12%"></div>'+
+         '<div class="skel" style="height:14px;width:10%"></div><div class="skel" style="height:14px;width:12%"></div>'+
+         '<div class="skel" style="height:14px;width:9%"></div><div class="skel" style="height:14px;width:11%"></div><div class="skel" style="height:14px;width:10%"></div></div>';}
+    box.innerHTML=s;return;
+  }
+  if(S.demo==="error"){box.innerHTML=errBox("渠道明细加载失败","渠道 × 站点表格");return;}
+
+  var rows=S.demo==="empty"?[]:sortRows(filtered());
+  if(rows.length===0){
+    box.innerHTML='<div class="state"><div class="h">没有符合条件的站点</div>'+
+      '<div class="p">'+(S.demo==="empty"?"昨日没有任何站点回传销售数据。检查 SP-API 授权是否过期，或先手动导入一次。":"当前筛选组合下 0 行。放宽渠道或站点条件即可看到数据。")+'</div>'+
+      '<button class="btn btn-primary" type="button" data-clear="1">清除全部筛选</button></div>';
+    $("#tb-sub").textContent="0 个站点";
+    return;
+  }
+  $("#tb-sub").textContent=rows.length+" 个站点 · 点击任意行查看该站点重点 SKU 的下钻详情";
+
+  var head=COLS.map(function(c){
+    var sorted=S.sortKey===c.k;
+    var aria=sorted?' aria-sort="'+(S.sortDir==="asc"?"ascending":"descending")+'"':"";
+    var caret=sorted?'<svg class="caret" viewBox="0 0 8 8" fill="currentColor" aria-hidden="true">'+(S.sortDir==="asc"?'<path d="M4 1l3 5H1z"/>':'<path d="M4 7L1 2h6z"/>')+'</svg>':"";
+    return '<th style="width:'+c.w+'" class="'+(c.r?"r":"")+'"'+aria+'><button type="button" data-sort="'+c.k+'">'+
+      (c.r?caret+c.t:c.t+caret)+'<span class="sr">，当前'+(sorted?(S.sortDir==="asc"?"升序":"降序"):"未排序")+'</span></button></th>';
+  }).join("");
+
+  var body=rows.map(function(r){
+    var d=S.cmp==="w"?r.gw:r.gm, roas=r.rev/r.ad, sku=SKUS[r.sku];
+    return '<tr tabindex="0" data-row="'+r.mk+'" aria-label="'+esc(r.ch+" "+r.mkn+"，打开 SKU 下钻")+'">'+
+      '<td><span class="name">'+r.ch+' '+r.mkn+' <span class="meta">'+r.sku+' · '+esc(sku.name.slice(0,12))+'…</span></span></td>'+
+      '<td class="r">'+money(r.rev)+'</td>'+
+      '<td class="r">'+int(r.ord)+'</td>'+
+      '<td class="r">'+money(r.ad)+'</td>'+
+      '<td class="r">'+roas.toFixed(2)+'</td>'+
+      '<td class="r">'+r.days+' 天</td>'+
+      '<td class="r"><span class="delta '+cls(d)+'">'+pct(d)+'</span></td>'+
+      '<td><span class="status '+ST[r.st].c+'"><span class="dot '+ST[r.st].c+'"></span>'+ST[r.st].t+'</span></td>'+
+    '</tr>';
+  }).join("");
+
+  box.innerHTML='<div class="tablewrap"><table><caption class="sr">渠道与站点昨日经营数据，可排序</caption>'+
+    '<thead><tr>'+head+'</tr></thead><tbody>'+body+'</tbody></table></div>';
+}
+
+/* ---------------- render: alerts ---------------- */
+function renderAlerts(){
+  var box=$("#al-body");
+  if(S.demo==="loading"){
+    var s="";for(var i=0;i<3;i++){s+='<div class="skel-row" style="display:block"><div class="skel" style="height:14px;width:70%"></div>'+
+      '<div class="skel" style="height:12px;width:45%;margin-top:var(--s-1)"></div><div class="skel" style="height:12px;width:90%;margin-top:var(--s-1)"></div></div>';}
+    box.innerHTML=s;return;
+  }
+  if(S.demo==="error"){box.innerHTML=errBox("预警流加载失败","今日预警");return;}
+
+  var list=S.demo==="empty"?[]:ALERTS.filter(function(a){
+    if(S.mk!=="all"&&a.mk!==S.mk)return false;
+    if(S.ch!=="all"){var r=ROWS.filter(function(x){return x.mk===a.mk})[0];if(!r||r.ch!==S.ch)return false;}
+    if(S.q.trim()){var hay=(a.title+a.type+a.sku+a.where).toLowerCase();if(hay.indexOf(S.q.trim().toLowerCase())<0)return false;}
+    return true;
+  });
+  $("#al-sub").textContent=list.length?list.length+" 条待处理":"0 条待处理";
+
+  if(list.length===0){
+    box.innerHTML='<div class="state"><div class="h">当前口径下没有待处理预警</div>'+
+      '<div class="p">监控规则每小时跑一次，命中断货、评分与广告成本阈值时会出现在这里。</div>'+
+      '<button class="btn btn-primary" type="button" data-rules="1">查看全部 14 条监控规则</button></div>';
+    return;
+  }
+  box.innerHTML=list.map(function(a){
+    return '<button class="alert-item sev-'+a.sev+'" type="button" data-alert="'+a.id+'">'+
+      '<div class="t">'+esc(a.title)+'</div>'+
+      '<div class="w"><span class="sev">'+(a.sev==="high"?"高":"中")+'</span> '+esc(a.type)+' · '+esc(a.impact)+'</div>'+
+      '<div class="m">'+esc(a.diag)+'</div></button>';
+  }).join("");
+}
+
+/* ---------------- drawers ---------------- */
+function openDrawer(){
+  $("#scrim").classList.add("on");
+  var d=$("#drawer");d.classList.add("on");d.setAttribute("aria-hidden","false");
+  $("#dw-close").focus();
+}
+function closeDrawer(){
+  $("#scrim").classList.remove("on");
+  var d=$("#drawer");d.classList.remove("on");d.setAttribute("aria-hidden","true");
+  if(lastFocus&&document.contains(lastFocus))lastFocus.focus();
+}
+function miniChart(units,label){
+  var W=480,H=120,L=8,R=8,T=14,B=18;
+  var max=Math.max.apply(null,units),min=Math.min.apply(null,units);
+  var hi=max*1.08,lo=Math.max(0,min*0.9);
+  var x=function(i){return L+(W-L-R)*i/(units.length-1)};
+  var y=function(v){return T+(H-T-B)*(1-(v-lo)/((hi-lo)||1))};
+  var pts=units.map(function(v,i){return x(i)+","+y(v)}).join(" ");
+  return '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+esc(label)+'" style="width:100%;height:auto">'+
+    '<polyline points="'+pts+'" fill="none" stroke="#4C86E8" stroke-width="2" stroke-linejoin="round"/>'+
+    '<circle cx="'+x(units.length-1)+'" cy="'+y(units[units.length-1])+'" r="3.5" fill="#4C86E8"/>'+
+    '<text x="'+L+'" y="'+(H-4)+'" fill="#93A2B2" style="font-size:var(--t-meta)" font-family="IBM Plex Mono, monospace">'+DAYS[0]+'</text>'+
+    '<text x="'+(W-R)+'" y="'+(H-4)+'" text-anchor="end" fill="#93A2B2" style="font-size:var(--t-meta)" font-family="IBM Plex Mono, monospace">'+DAYS[DAYS.length-1]+'</text>'+
+    '</svg>';
+}
+function skuDrawer(code){
+  var s=SKUS[code];
+  var last7=s.units.slice(7).reduce(function(a,b){return a+b},0);
+  var prev7=s.units.slice(0,7).reduce(function(a,b){return a+b},0);
+  var d=(last7/prev7-1)*100;
+  var maxQ=Math.max.apply(null,s.wh.map(function(w){return w.q}));
+  $("#dw-title").textContent=s.code;
+  $("#dw-sub").textContent=s.name;
+  $("#dw-body").innerHTML=
+    '<div class="block"><h3>近 14 日销量（件）</h3>'+
+      '<div style="display:flex;align-items:baseline;gap:var(--s-2)"><span class="num" style="font-size:var(--t-heading)">'+int(last7)+'</span>'+
+      '<span style="font-size:var(--t-meta);color:var(--muted)">近 7 日合计 · <span class="delta '+cls(d)+'">'+pct(d)+'</span> 环比上周</span></div>'+
+      miniChart(s.units,s.code+" 近 14 日销量趋势")+
+    '</div>'+
+    '<div class="block"><h3>分仓库存与可售天数</h3><div class="bars">'+
+      s.wh.map(function(w){
+        var c=w.d===0?"":(w.d<10?"alert":(w.d<15?"warn":""));
+        return '<div class="bar-row"><span class="name">'+esc(w.n)+'</span>'+
+          '<span class="bar-track"><span class="bar-fill '+c+'" style="width:'+Math.round(w.q/maxQ*100)+'%"></span></span>'+
+          '<span class="val">'+int(w.q)+' 件 · '+(w.d?w.d+" 天":"备货")+'</span></div>';
+      }).join("")+
+    '</div></div>'+
+    '<div class="block"><h3>差评主题 Top 5（近 30 天，当前评分 '+s.rating.toFixed(1)+'）</h3><div class="bars">'+
+      s.reviews.map(function(r){
+        return '<div class="bar-row"><span class="name">'+esc(r.t)+'</span>'+
+          '<span class="bar-track"><span class="bar-fill warn" style="width:'+r.p+'%"></span></span>'+
+          '<span class="val">'+r.c+' 条 · '+r.p+'%</span></div>';
+      }).join("")+
+    '</div></div>';
+  $("#dw-foot").innerHTML='<button class="btn" type="button" data-act="导出该 SKU 明细">导出明细 CSV</button>'+
+    '<button class="btn btn-primary" type="button" data-act="补货建议已发给供应链">生成补货建议</button>';
+  openDrawer();
+}
+function alertDrawer(id){
+  var a=ALERTS.filter(function(x){return x.id===id})[0];
+  if(!a)return;
+  $("#dw-title").textContent=a.type;
+  $("#dw-sub").textContent=a.title;
+  $("#dw-body").innerHTML=
+    '<div class="block"><h3>基本信息</h3><dl class="kv">'+
+      '<dt>发生时间</dt><dd class="num">2026-09-16 07:10</dd>'+
+      '<dt>影响范围</dt><dd>'+esc(a.where)+'</dd>'+
+      '<dt>影响估算</dt><dd>'+esc(a.impact)+'</dd>'+
+      '<dt>关联 SKU</dt><dd>'+a.sku+' · '+esc(SKUS[a.sku].name)+'</dd>'+
+    '</dl></div>'+
+    '<div class="block"><h3>诊断</h3><p>'+esc(a.diag)+'</p></div>'+
+    '<div class="block rec"><h3>建议动作</h3><ol>'+a.acts.map(function(t){return '<li>'+esc(t)+'</li>'}).join("")+'</ol></div>'+
+    '<div class="block"><h3>该 SKU 近 14 日销量</h3>'+miniChart(SKUS[a.sku].units,a.sku+" 近 14 日销量")+'</div>';
+  $("#dw-foot").innerHTML='<button class="btn" type="button" data-sku="'+a.sku+'">查看 SKU 下钻</button>'+
+    '<button class="btn btn-primary" type="button" data-act="'+esc(a.done)+'">'+esc(a.cta)+'</button>';
+  openDrawer();
+}
+function toast(msg){
+  var t=$("#toast");t.textContent=msg;t.classList.add("on");
+  clearTimeout(t._h);t._h=setTimeout(function(){t.classList.remove("on")},2400);
+}
+
+/* ---------------- wiring ---------------- */
+function renderAll(){renderOverview();renderTable();renderAlerts();
+  $("#demo-note").textContent="当前："+{ready:"正常数据",loading:"加载中",empty:"空数据",error:"接口错误"}[S.demo];}
+
+$("#f-channel").addEventListener("change",function(e){S.ch=e.target.value;renderAll()});
+$("#f-market").addEventListener("change",function(e){S.mk=e.target.value;renderAll()});
+$("#f-cmp").addEventListener("change",function(e){S.cmp=e.target.value;renderAll()});
+$("#f-q").addEventListener("input",function(e){S.q=e.target.value;renderAll()});
+$("#btn-refresh").addEventListener("click",function(){
+  var prev=S.demo;S.demo="loading";renderAll();
+  setTimeout(function(){S.demo=prev==="loading"?"ready":prev;renderAll();
+    $("#stamp").textContent="数据截至 2026-09-15 23:59 (UTC+8) · 刚刚同步";toast("已重新同步昨日快照");},700);
+});
+$("#seg-state").addEventListener("click",function(e){
+  var b=e.target.closest("button[data-state]");if(!b)return;
+  S.demo=b.dataset.state;
+  Array.prototype.forEach.call(this.querySelectorAll("button"),function(x){x.setAttribute("aria-pressed",String(x===b))});
+  renderAll();
+});
+document.addEventListener("click",function(e){
+  var t=e.target;
+  var m=t.closest?t.closest("[data-metric]"):null;
+  if(m){S.metric=m.dataset.metric;renderOverview();return;}
+  var w=t.closest?t.closest("[data-win]"):null;
+  if(w){S.win=parseInt(w.dataset.win,10);renderOverview();return;}
+  var so=t.closest?t.closest("[data-sort]"):null;
+  if(so){var k=so.dataset.sort;
+    if(S.sortKey===k)S.sortDir=S.sortDir==="asc"?"desc":"asc";else{S.sortKey=k;S.sortDir=k==="name"?"asc":"desc";}
+    renderTable();return;}
+  var cl=t.closest?t.closest("[data-clear]"):null;
+  if(cl){S.ch="all";S.mk="all";S.q="";S.demo="ready";
+    $("#f-channel").value="all";$("#f-market").value="all";$("#f-q").value="";
+    Array.prototype.forEach.call($("#seg-state").querySelectorAll("button"),function(x){x.setAttribute("aria-pressed",String(x.dataset.state==="ready"))});
+    renderAll();return;}
+  var rt=t.closest?t.closest("[data-retry]"):null;
+  if(rt){S.demo="loading";renderAll();setTimeout(function(){S.demo="ready";renderAll();toast("已重新拉取数据");},700);return;}
+  var ru=t.closest?t.closest("[data-rules]"):null;
+  if(ru){toast("监控规则页在下一迭代接入");return;}
+  var al=t.closest?t.closest("[data-alert]"):null;
+  if(al){lastFocus=al;alertDrawer(al.dataset.alert);return;}
+  var sk=t.closest?t.closest("[data-sku]"):null;
+  if(sk){skuDrawer(sk.dataset.sku);return;}
+  var row=t.closest?t.closest("[data-row]"):null;
+  if(row){lastFocus=row;var r=ROWS.filter(function(x){return x.mk===row.dataset.row})[0];if(r)skuDrawer(r.sku);return;}
+  var ac=t.closest?t.closest("[data-act]"):null;
+  if(ac){toast(ac.dataset.act);closeDrawer();return;}
+});
+document.addEventListener("keydown",function(e){
+  if(e.key==="Escape"&&$("#drawer").classList.contains("on")){closeDrawer();return;}
+  if(e.key==="Enter"||e.key===" "){
+    var row=e.target.closest?e.target.closest("[data-row]"):null;
+    if(row){e.preventDefault();lastFocus=row;var r=ROWS.filter(function(x){return x.mk===row.dataset.row})[0];if(r)skuDrawer(r.sku);}
+  }
+});
+$("#dw-close").addEventListener("click",closeDrawer);
+$("#scrim").addEventListener("click",closeDrawer);
+
+renderAll();
+})();
+</script>
+</body>
+</html>
